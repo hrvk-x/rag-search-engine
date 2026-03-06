@@ -187,16 +187,41 @@ def semantic_chunk(
     max_chunk_size: int = DEFAULT_SEMANTIC_CHUNK_SIZE,
     overlap: int = DEFAULT_CHUNK_OVERLAP,
 ) -> list[str]:
+
+    # 1. Strip leading/trailing whitespace from input
+    text = text.strip()
+
+    # 2. If nothing left, return empty list
+    if not text:
+        return []
+
+    # 3. Split sentences
     sentences = re.split(r"(?<=[.!?])\s+", text)
+
+    # 4. Handle case where there is only one sentence
+    # and it has no punctuation
+    if len(sentences) == 1 and not re.search(r"[.!?]$", sentences[0]):
+        sentences = [text]
+
     chunks = []
     i = 0
     n_sentences = len(sentences)
+
     while i < n_sentences:
         chunk_sentences = sentences[i : i + max_chunk_size]
+
+        # 5. Strip whitespace from each sentence
+        cleaned = [s.strip() for s in chunk_sentences if s.strip()]
+
+        # 6. Only keep chunks with actual content
+        if cleaned:
+            chunks.append(" ".join(cleaned))
+
         if chunks and len(chunk_sentences) <= overlap:
             break
-        chunks.append(" ".join(chunk_sentences))
+
         i += max_chunk_size - overlap
+
     return chunks
 
 
