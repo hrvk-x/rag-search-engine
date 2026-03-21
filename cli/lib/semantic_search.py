@@ -187,20 +187,13 @@ def semantic_chunk(
     max_chunk_size: int = DEFAULT_SEMANTIC_CHUNK_SIZE,
     overlap: int = DEFAULT_CHUNK_OVERLAP,
 ) -> list[str]:
-
-    # 1. Strip leading/trailing whitespace from input
     text = text.strip()
-
-    # 2. If nothing left, return empty list
     if not text:
         return []
 
-    # 3. Split sentences
     sentences = re.split(r"(?<=[.!?])\s+", text)
 
-    # 4. Handle case where there is only one sentence
-    # and it has no punctuation
-    if len(sentences) == 1 and not re.search(r"[.!?]$", sentences[0]):
+    if len(sentences) == 1 and not text.endswith((".", "!", "?")):
         sentences = [text]
 
     chunks = []
@@ -209,17 +202,16 @@ def semantic_chunk(
 
     while i < n_sentences:
         chunk_sentences = sentences[i : i + max_chunk_size]
-
-        # 5. Strip whitespace from each sentence
-        cleaned = [s.strip() for s in chunk_sentences if s.strip()]
-
-        # 6. Only keep chunks with actual content
-        if cleaned:
-            chunks.append(" ".join(cleaned))
-
         if chunks and len(chunk_sentences) <= overlap:
             break
 
+        cleaned_sentences = []
+        for chunk_sentence in chunk_sentences:
+            cleaned_sentences.append(chunk_sentence.strip())
+        if not cleaned_sentences:
+            continue
+        chunk = " ".join(cleaned_sentences)
+        chunks.append(chunk)
         i += max_chunk_size - overlap
 
     return chunks
@@ -244,6 +236,7 @@ class ChunkedSemanticSearch(SemanticSearch):
 
     def build_chunk_embeddings(self, documents: list[dict]) -> np.ndarray:
         self.documents = documents
+
         self.document_map = {}
         for doc in documents:
             self.document_map[doc["id"]] = doc
@@ -296,7 +289,7 @@ class ChunkedSemanticSearch(SemanticSearch):
             return self.chunk_embeddings
 
         return self.build_chunk_embeddings(documents)
-    
+
     def search_chunks(self, query: str, limit: int = 10) -> list[dict]:
         if self.chunk_embeddings is None or self.chunk_metadata is None:
             raise ValueError(
@@ -348,6 +341,7 @@ def embed_chunks_command() -> np.ndarray:
     movies = load_movies()
     searcher = ChunkedSemanticSearch()
     return searcher.load_or_create_chunk_embeddings(movies)
+
 
 def search_chunked_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> dict:
     movies = load_movies()
