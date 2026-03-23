@@ -3,6 +3,8 @@ import os
 from typing import Any
 
 DEFAULT_ALPHA = 0.5
+RRF_K = 60
+SEARCH_MULTIPLIER = 5
 
 DEFAULT_SEARCH_LIMIT = 5
 DOCUMENT_PREVIEW_LENGTH = 100
@@ -24,7 +26,7 @@ DEFAULT_SEMANTIC_CHUNK_SIZE = 4
 MOVIE_EMBEDDINGS_PATH = os.path.join(CACHE_DIR, "movie_embeddings.npy")
 CHUNK_EMBEDDINGS_PATH = os.path.join(CACHE_DIR, "chunk_embeddings.npy")
 CHUNK_METADATA_PATH = os.path.join(CACHE_DIR, "chunk_metadata.json")
-
+GOLDEN_DATASET_PATH = os.path.join(PROJECT_ROOT, "data", "golden_dataset.json")
 
 def load_movies() -> list[dict]:
     with open(DATA_PATH, "r") as f:
@@ -59,3 +61,7 @@ def format_search_result(
         "score": round(score, SCORE_PRECISION),
         "metadata": metadata if metadata else {},
     }
+
+def load_golden_dataset() -> dict:
+    with open(GOLDEN_DATASET_PATH, "r") as f:
+        return json.load(f)
