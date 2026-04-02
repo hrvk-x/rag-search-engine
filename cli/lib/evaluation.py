@@ -4,7 +4,19 @@ from .search_utils import (
     load_movies,
 )
 from .semantic_search import SemanticSearch
+import json
+import os
 
+from dotenv import load_dotenv
+from google import genai
+
+load_dotenv()
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    raise RuntimeError("GEMINI_API_KEY environment variable not set")
+
+client = genai.Client(api_key=api_key)
+model = "gemma-3-27b-it"
 
 def precision_at_k(
     retrieved_docs: list[str], relevant_docs: set[str], k: int = 5
@@ -75,3 +87,42 @@ def evaluate_command(limit: int = 5) -> dict:
         "limit": limit,
         "results": results_by_query,
     }
+
+def llm_judge_results(query: str, results: list[dict]) -> list[int]:
+    if not api_key:
+        print("Warning: GEMINI_API_KEY not found. Skipping LLM evaluation.")
+        return [0] * len(results)
+
+    formatted_results = []
+    for i, result in enumerate(results, 1):
+        formatted_results.append(f"{i}. {result['title']}")
+
+    prompt = f"""Rate how relevant each result is to this query on a 0-3 scale:
+
+    Query: "{query}"
+
+    Results:
+    {chr(10).join(formatted_results)}
+
+    Scale:
+    - 3: Highly relevant
+    - 2: Relevant
+    - 1: Marginally relevant
+    - 0: Not relevant
+
+    Do NOT give any numbers other than 0, 1, 2, or 3.
+
+    Return ONLY the scores in the same order you were given the documents. Return a valid JSON list, nothing else. For example:
+
+    [2, 0, 3, 2, 0, 1]"""
+
+    response = client.models.generate_content(model=model, contents=prompt)
+    ranking_text = (response.text or "").strip()
+    scores = json.loads(ranking_text)
+
+    if len(scores) == len(results):
+        return list(map(int, scores))
+
+    raise ValueError(
+        f"LLM response parsing error. Expected {len(results)} scores, got {len(scores)}. Response: {scores}"
+    )
